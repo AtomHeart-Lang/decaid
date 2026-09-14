@@ -500,13 +500,16 @@ matches the stage predicate. Whichever arrives first wins. Firmware that does
 notify completes exactly as before; the poll simply loses the race.
 
 Terminal frames are 7 bytes: window, erase, map, then three error bytes. Erase
-and verify reach terminal on error `ff ff ff`; verify succeeds only on
-`ff ff fd`.
+is terminal only for `window=0, firmwareToErase=0, firmwareToMap=1` with error
+`ff ff ff`. During verify, that same `ff ff ff` error is pending/non-terminal;
+with the same first three fields, every other error tuple is terminal. `ff ff fd`
+is success, while `ff ff 01` is a terminal failure.
 
 ### Both transports need a FRESH read
 
-`UnifiedDe1Transport.readFwMapRequestFresh` exists because neither transport's
-normal read path returns a current register value here.
+`UnifiedDe1Transport.readFwMapRequestFresh` exists because the serial normal
+read path is cached, while BLE's public `read()` does make a fresh GATT read but
+is unsuitable here: timeout recovery may disconnect and reconnect mid-update.
 
 On **serial**, `_serialRead` hands back the last pushed `[I]` frame, which never
 changes once the firmware stops emitting the notify. `fwMapRequest` is already
